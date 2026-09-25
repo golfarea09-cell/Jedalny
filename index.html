@@ -72,6 +72,17 @@ textarea{min-height:105px;resize:vertical}
 .bottom-save{position:fixed;left:0;right:0;bottom:0;padding:9px 11px calc(9px + env(safe-area-inset-bottom));background:rgba(243,240,233,.96);backdrop-filter:blur(10px);border-top:1px solid #ddd;z-index:25}
 .bottom-save .toolbar{max-width:980px;margin:auto}
 .note{font-size:12px;color:var(--muted);line-height:1.35}
+.filter-bar{display:flex;gap:7px;overflow-x:auto;padding:2px 0 8px;-webkit-overflow-scrolling:touch}
+.filter-bar button{border:1px solid var(--line);background:#fff;border-radius:999px;padding:8px 11px;white-space:nowrap;font-weight:700}
+.filter-bar button.active{background:var(--gold);border-color:var(--gold);color:#111}
+.food-tools{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;margin-top:10px}
+.food-count{font-size:13px;color:var(--muted);white-space:nowrap}
+.star-btn{border:0;background:transparent;font-size:28px;line-height:1;padding:2px 6px;cursor:pointer}
+.star-btn.on{color:#d29a18}
+.item-main{min-width:0;flex:1}
+.food-pick-row{display:grid;grid-template-columns:1fr 44px;gap:6px;align-items:stretch}
+.food-pick-row .food-pick{width:100%}
+@media(max-width:700px){.food-tools{grid-template-columns:1fr}.food-count{white-space:normal}}
 .choice-field{cursor:pointer;background:#fff;caret-color:transparent}
 .choice-field:focus{outline:none;border-color:#c49538;box-shadow:0 0 0 3px rgba(196,149,56,.18)}
 .modal-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.48);z-index:100;align-items:flex-end;justify-content:center}
@@ -162,7 +173,7 @@ textarea{min-height:105px;resize:vertical}
     <div class="grid2">
       <input id="foodName" placeholder="Názov jedla">
       <select id="foodGroup">
-        <option>Polievka</option><option>Hlavné</option><option>Pizza</option><option>Business</option><option>Fit</option>
+        <option>Polievka</option><option>Hlavné</option><option>Ryby</option><option>Bezmäsité</option><option>Sladké</option><option>Pizza</option><option>Business</option><option>Fit</option>
       </select>
     </div>
     <div class="grid3" style="margin-top:8px">
@@ -171,6 +182,12 @@ textarea{min-height:105px;resize:vertical}
       <input id="foodSide" placeholder="Príloha">
     </div>
     <button class="btn primary" style="margin-top:8px" onclick="addFood()">+ Pridať jedlo</button>
+    <div class="food-tools">
+      <input id="foodListSearch" placeholder="Hľadať v databáze…" oninput="foodListQuery=this.value;renderFoods()">
+      <div class="food-count" id="foodCount"></div>
+    </div>
+    <div class="filter-bar" id="foodFilters" style="margin-top:8px"></div>
+    <p class="note">⭐ Ťuknutím na hviezdičku pridáš jedlo medzi obľúbené. Obľúbené sa zobrazujú aj pri výbere jedla do denného menu.</p>
   </div>
   <div id="foodList" class="list"></div>
 </section>
@@ -245,6 +262,7 @@ textarea{min-height:105px;resize:vertical}
     </div>
     <div class="db-panel" id="dbPanel">
       <input class="food-search" id="foodSearch" placeholder="Hľadať jedlo…" oninput="renderFoodPicker()">
+      <div class="filter-bar" id="pickerFilters" style="margin-top:8px"></div>
       <div class="food-pick-list" id="foodPickList"></div>
     </div>
     <div class="custom-form" id="customPanel">
@@ -478,10 +496,12 @@ function blankState(){
 let state = JSON.parse(localStorage.getItem("tobbMenuStateV2")||"null") || blankState();
 if(!state.archive) state.archive=[];
 if(!state.sides) state.sides=[];
+if(!state.foods) state.foods=[];
+state.foods.forEach(f=>{if(f.favorite===undefined)f.favorite=false;});
 // Doplň vstavanú databázu aj používateľom, ktorí už aplikáciu používali pred aktualizáciou.
 const builtInCatalog=blankState();
 builtInCatalog.foods.forEach(f=>{
-  if(!state.foods.some(x=>x.name.toLowerCase()===f.name.toLowerCase())) state.foods.push({...f});
+  if(!state.foods.some(x=>x.name.toLowerCase()===f.name.toLowerCase())) state.foods.push({...f,favorite:false});
 });
 builtInCatalog.sides.forEach(s=>{
   if(!state.sides.some(x=>x.name.toLowerCase()===s.name.toLowerCase())) state.sides.push({...s});
@@ -491,6 +511,13 @@ Object.values(state.week?.days||{}).forEach(d=>{
   (d.soups||[]).forEach(x=>{if(x.side===undefined)x.side=""});
 });
 let activeDay=0;
+let activeFoodFilter="all";
+let foodListQuery="";
+let modalFoodFilter="all";
+const FOOD_FILTERS=[
+  ["fav","⭐ Obľúbené"],["all","Všetko"],["Polievka","Polievky"],["Hlavné","Hlavné"],
+  ["Ryby","Ryby"],["Bezmäsité","Bezmäsité"],["Sladké","Sladké"],["Pizza","Pizza"],["Business","Business"],["Fit","Fit"]
+];
 
 const $=id=>document.getElementById(id);
 function esc(s){return (s??"").toString().replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[m]))}
@@ -595,6 +622,7 @@ let modalTarget={kind:"item",i:0};
 function openFoodModal(kind,i){
   saveCurrentDay(true);
   modalTarget={kind,i};
+  modalFoodFilter="all";
   $("foodModalTitle").textContent=kind==="soup"?"Vybrať polievku":"Vybrať jedlo";
   const d=getDay(activeDay),obj=kind==="soup"?d.soups[i]:d.items[i];
   $("customFoodName").value=obj.name||"";
@@ -615,11 +643,35 @@ function showFoodModalTab(tab){
   $("customPanel").classList.toggle("show",!db);
   if(!db)setTimeout(()=>$("customFoodName").focus(),50);
 }
+function setPickerFilter(filter){
+  modalFoodFilter=filter;
+  renderFoodPicker();
+}
+function renderPickerFilters(){
+  const el=$("pickerFilters"); if(!el)return;
+  const kind=modalTarget.kind;
+  const filters=kind==="soup"
+    ? [["fav","⭐ Obľúbené"],["all","Všetky polievky"]]
+    : [["fav","⭐ Obľúbené"],["all","Všetky"],["Hlavné","Hlavné"],["Ryby","Ryby"],["Bezmäsité","Bezmäsité"],["Sladké","Sladké"],["Pizza","Pizza"],["Business","Business"],["Fit","Fit"]];
+  el.innerHTML=filters.map(([key,label])=>`<button class="${modalFoodFilter===key?'active':''}" onclick="setPickerFilter('${key}')">${label}</button>`).join("");
+}
 function renderFoodPicker(){
   const q=($("foodSearch")?.value||"").trim().toLowerCase();
   const kind=modalTarget.kind;
-  const foods=state.foods.filter(f=>(kind==="soup"?f.group==="Polievka":f.group!=="Polievka") && (!q||f.name.toLowerCase().includes(q)));
-  $("foodPickList").innerHTML=foods.length?foods.map((f,idx)=>`<button class="food-pick" onclick="pickDbFood(${state.foods.indexOf(f)})"><b>${esc(f.name)}</b><div class="meta">${f.price?euro(esc(f.price))+" • ":""}${f.allergens?"alergény "+esc(f.allergens):"bez zadaných alergénov"}</div></button>`).join(""):`<div class="item"><span class="note">Nič sa nenašlo. Prejdi na „Vlastné jedlo“.</span></div>`;
+  renderPickerFilters();
+  let foods=state.foods.filter(f=>{
+    const kindOk=kind==="soup"?f.group==="Polievka":f.group!=="Polievka";
+    const filterOk=modalFoodFilter==="all" ? true : modalFoodFilter==="fav" ? !!f.favorite : f.group===modalFoodFilter;
+    return kindOk && filterOk && (!q||`${f.name} ${f.side||""}`.toLowerCase().includes(q));
+  });
+  foods.sort((a,b)=>(Number(!!b.favorite)-Number(!!a.favorite)) || a.name.localeCompare(b.name,"sk"));
+  $("foodPickList").innerHTML=foods.length?foods.map(f=>{
+    const i=state.foods.indexOf(f);
+    return `<div class="food-pick-row">
+      <button class="food-pick" onclick="pickDbFood(${i})"><b>${esc(f.name)}</b><div class="meta">${f.price?euro(esc(f.price))+" • ":""}${f.allergens?"alergény "+esc(f.allergens):"bez zadaných alergénov"}${f.side?" • "+esc(f.side):""}</div></button>
+      <button class="star-btn ${f.favorite?'on':''}" onclick="toggleFavorite(${i},event)" title="Obľúbené">${f.favorite?'★':'☆'}</button>
+    </div>`;
+  }).join(""):`<div class="item"><span class="note">Nič sa nenašlo. Prejdi na „Vlastné jedlo“.</span></div>`;
 }
 function pickDbFood(index){
   const f=state.foods[index]; if(!f)return;
@@ -638,7 +690,7 @@ function useCustomFood(saveDb){
   if(saveDb){
     let f=state.foods.find(x=>x.name.toLowerCase()===name.toLowerCase());
     if(f){f.price=price||f.price||"";f.allergens=allergens||f.allergens||"";f.side=side||f.side||"";}
-    else state.foods.push({name,group:modalTarget.kind==="soup"?"Polievka":"Hlavné",price,allergens,side});
+    else state.foods.push({name,group:modalTarget.kind==="soup"?"Polievka":"Hlavné",price,allergens,side,favorite:false});
     renderFoods();renderFoodOptions();
   }
   closeFoodModal();renderMenuEditor();saveAll(true);
@@ -761,16 +813,50 @@ function copyPrevDay(){if(activeDay===0)return alert("Pondelok nemá predošlý 
 
 function addFood(){
   const name=$("foodName").value.trim(); if(!name)return alert("Zadaj názov jedla.");
-  const entry={name,group:$("foodGroup").value,price:$("foodPrice").value.trim(),allergens:$("foodAllergens").value.trim(),side:$("foodSide").value.trim()};
+  const entry={name,group:$("foodGroup").value,price:$("foodPrice").value.trim(),allergens:$("foodAllergens").value.trim(),side:$("foodSide").value.trim(),favorite:false};
   const existing=state.foods.find(x=>x.name.toLowerCase()===name.toLowerCase());
-  if(existing) Object.assign(existing,entry); else state.foods.push(entry);
+  if(existing){
+    const fav=!!existing.favorite;
+    Object.assign(existing,entry,{favorite:fav});
+  } else state.foods.push(entry);
   $("foodName").value=$("foodPrice").value=$("foodAllergens").value=$("foodSide").value="";
   renderFoods();renderFoodOptions();saveAll(true);
 }
+function setFoodFilter(filter){
+  activeFoodFilter=filter;
+  renderFoods();
+}
+function renderFoodFilters(){
+  const el=$("foodFilters"); if(!el)return;
+  el.innerHTML=FOOD_FILTERS.map(([key,label])=>`<button class="${activeFoodFilter===key?'active':''}" onclick="setFoodFilter('${key}')">${label}</button>`).join("");
+}
+function toggleFavorite(i,ev){
+  if(ev){ev.preventDefault();ev.stopPropagation();}
+  const f=state.foods[i]; if(!f)return;
+  f.favorite=!f.favorite;
+  renderFoods();renderFoodPicker();saveAll(true);
+}
 function renderFoods(){
-  $("foodList").innerHTML=state.foods.map((f,i)=>`<div class="item"><div class="item-head"><div>
-  <b>${esc(f.name)}</b><div class="meta">${esc(f.group)} ${f.price?"• "+euro(esc(f.price)):""} ${f.allergens?"• alergény "+esc(f.allergens):""} ${f.side?"• "+esc(f.side):""}</div>
-  </div><div class="toolbar"><button class="btn tiny secondary" onclick="editFood(${i})">Upraviť</button><button class="btn tiny danger" onclick="deleteFood(${i})">Zmazať</button></div></div></div>`).join("");
+  renderFoodFilters();
+  const q=(foodListQuery||"").trim().toLowerCase();
+  const filtered=state.foods.filter(f=>{
+    const filterOk=activeFoodFilter==="all" ? true : activeFoodFilter==="fav" ? !!f.favorite : f.group===activeFoodFilter;
+    const text=`${f.name} ${f.group} ${f.side||""} ${f.allergens||""}`.toLowerCase();
+    return filterOk && (!q || text.includes(q));
+  });
+  const count=$("foodCount");
+  if(count)count.textContent=`Zobrazené ${filtered.length} z ${state.foods.length}`;
+  $("foodList").innerHTML=filtered.length?filtered.map(f=>{
+    const i=state.foods.indexOf(f);
+    return `<div class="item"><div class="item-head">
+      <div class="item-main"><b>${esc(f.name)}</b><div class="meta">${esc(f.group)} ${f.price?"• "+euro(esc(f.price)):""} ${f.allergens?"• alergény "+esc(f.allergens):""} ${f.side?"• "+esc(f.side):""}</div></div>
+      <div class="toolbar">
+        <button class="star-btn ${f.favorite?'on':''}" title="Obľúbené" onclick="toggleFavorite(${i},event)">${f.favorite?'★':'☆'}</button>
+        <button class="btn tiny secondary" onclick="editFood(${i})">Upraviť</button>
+        <button class="btn tiny danger" onclick="deleteFood(${i})">Zmazať</button>
+      </div>
+    </div></div>`;
+  }).join(""):`<div class="card"><span class="note">V tejto kategórii sa nič nenašlo.</span></div>`;
 }
 function editFood(i){
   const f=state.foods[i]; const name=prompt("Názov jedla:",f.name); if(name===null)return;
