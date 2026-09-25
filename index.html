@@ -46,6 +46,10 @@ textarea{min-height:105px;resize:vertical}
 .menu-block{border:1px solid #e2ded5;border-radius:11px;padding:9px;margin-bottom:8px}
 .menu-grid{display:grid;grid-template-columns:32px 1fr 77px;gap:7px;align-items:center}
 .menu-grid + .menu-grid{margin-top:6px}
+.menu-choice{display:grid;grid-template-columns:1fr;gap:6px;margin:6px 0}
+.menu-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:7px}
+.menu-actions .btn{flex:1 1 auto}
+.select-label{font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.03em}
 .num{font-weight:800;text-align:center}
 .helper{font-size:12px;color:var(--muted)}
 .preview-wrap{overflow:auto;-webkit-overflow-scrolling:touch}
@@ -127,6 +131,7 @@ textarea{min-height:105px;resize:vertical}
 <section id="foods">
   <div class="card">
     <h2>Databáza jedál</h2>
+    <p class="note">Jedlo si tu uložíš spolu s cenou a alergénmi. Keď ho potom vyberieš v dennom menu, cena a alergény sa doplnia automaticky.</p>
     <div class="grid2">
       <input id="foodName" placeholder="Názov jedla">
       <select id="foodGroup">
@@ -309,37 +314,108 @@ function syncWeekDates(redraw=true){
 function renderDayTabs(){
   $("dayTabs").innerHTML=DAYS.map((d,i)=>`<button class="${i===activeDay?'active':''}" onclick="activeDay=${i};renderDayTabs();renderMenuEditor()">${d}<br><small>${fmtDate(dayISO(i)).slice(0,5)}</small></button>`).join("");
 }
+function foodSelectOptions(kind,current){
+  const foods=state.foods.filter(f=>kind==="soup"?f.group==="Polievka":f.group!=="Polievka");
+  let h='<option value="">— Vybrať zo zoznamu —</option>';
+  foods.forEach(f=>{
+    const selected=f.name===current?' selected':'';
+    h+=`<option value="${esc(f.name)}"${selected}>${esc(f.name)}</option>`;
+  });
+  return h;
+}
 function renderMenuEditor(){
   const d=getDay(activeDay);
+  if(!Array.isArray(d.items)) d.items=[];
+  if(!d.items.length) d.items.push({name:"",price:"",allergens:""});
   $("dayTitle").textContent=`${DAYS[activeDay]} ${fmtDate(dayISO(activeDay))}`;
   let h="";
   ["A","B"].forEach((lab,idx)=>{
     const x=d.soups[idx];
     h+=`<div class="menu-block">
+      <div class="select-label">Polievka ${lab} – vyber zo zoznamu alebo napíš vlastnú</div>
+      <div class="menu-choice">
+        <select data-pick-kind="soup" data-pick-i="${idx}" onchange="chooseFood(this)">${foodSelectOptions("soup",x.name)}</select>
+      </div>
       <div class="menu-grid"><div class="num">${lab}.</div>
-      <input list="foodOptions" value="${esc(x.name)}" data-kind="soup" data-i="${idx}" placeholder="Polievka ${lab}">
+      <input value="${esc(x.name)}" data-kind="soup" data-i="${idx}" placeholder="Vlastná polievka">
       <input value="${esc(x.allergens)}" data-all="soup-${idx}" placeholder="Alerg."></div>
+      <div class="menu-actions">
+        <button class="btn tiny secondary" onclick="saveMenuFoodToDb('soup',${idx})">Uložiť do databázy</button>
+        <button class="btn tiny danger" onclick="clearSoup(${idx})">Vymazať</button>
+      </div>
     </div>`;
   });
   d.items.forEach((x,i)=>{
     h+=`<div class="menu-block">
+      <div class="select-label">Jedlo ${i+1} – vyber zo zoznamu alebo napíš vlastné</div>
+      <div class="menu-choice">
+        <select data-pick-kind="item" data-pick-i="${i}" onchange="chooseFood(this)">${foodSelectOptions("item",x.name)}</select>
+      </div>
       <div class="menu-grid"><div class="num">${i+1}.</div>
-      <input list="foodOptions" value="${esc(x.name)}" data-kind="item" data-i="${i}" placeholder="Jedlo ${i+1}">
+      <input value="${esc(x.name)}" data-kind="item" data-i="${i}" placeholder="Vlastné jedlo">
       <input value="${esc(x.price)}" data-price="item-${i}" placeholder="Cena"></div>
       <div class="menu-grid"><div></div>
       <input value="${esc(x.allergens)}" data-all="item-${i}" placeholder="Alergény napr. 1,3,7">
-      <button class="btn tiny secondary" onclick="clearItem(${i})">Vymaž</button></div>
+      <button class="btn tiny secondary" onclick="saveMenuFoodToDb('item',${i})">Uložiť do DB</button></div>
+      <div class="menu-actions">
+        <button class="btn tiny danger" onclick="removeMenuItem(${i})">Odstrániť položku</button>
+      </div>
     </div>`;
   });
+  h+=`<button class="btn primary" style="width:100%;margin:4px 0 10px" onclick="addMenuItem()">+ Pridať položku jedla</button>`;
   $("menuEditor").innerHTML=h;
-  $("menuEditor").querySelectorAll('input[list="foodOptions"]').forEach(inp=>inp.addEventListener("change",()=>autofill(inp)));
+  $("menuEditor").querySelectorAll("[data-kind]").forEach(inp=>inp.addEventListener("change",()=>autofill(inp)));
+}
+function chooseFood(sel){
+  if(!sel.value)return;
+  const f=state.foods.find(x=>x.name===sel.value);
+  if(!f)return;
+  const kind=sel.dataset.pickKind,i=+sel.dataset.pickI,d=getDay(activeDay),obj=kind==="soup"?d.soups[i]:d.items[i];
+  obj.name=f.name; obj.price=f.price||""; obj.allergens=f.allergens||"";
+  renderMenuEditor();
+  saveAll(true);
 }
 function autofill(inp){
   const f=state.foods.find(x=>x.name===inp.value);
   if(!f)return;
   const kind=inp.dataset.kind,i=+inp.dataset.i,d=getDay(activeDay),obj=kind==="soup"?d.soups[i]:d.items[i];
-  obj.name=f.name; obj.price=f.price; obj.allergens=f.allergens;
+  obj.name=f.name; obj.price=f.price||""; obj.allergens=f.allergens||"";
   renderMenuEditor();
+}
+function addMenuItem(){
+  saveCurrentDay(true);
+  getDay(activeDay).items.push({name:"",price:"",allergens:""});
+  renderMenuEditor();
+  saveAll(true);
+}
+function removeMenuItem(i){
+  saveCurrentDay(true);
+  const d=getDay(activeDay);
+  d.items.splice(i,1);
+  if(!d.items.length)d.items.push({name:"",price:"",allergens:""});
+  renderMenuEditor();
+  saveAll(true);
+}
+function clearSoup(i){
+  getDay(activeDay).soups[i]={name:"",price:"",allergens:""};
+  renderMenuEditor();
+  saveAll(true);
+}
+function saveMenuFoodToDb(kind,i){
+  saveCurrentDay(true);
+  const d=getDay(activeDay),obj=kind==="soup"?d.soups[i]:d.items[i];
+  if(!obj.name)return alert("Najprv zadaj názov jedla.");
+  const existing=state.foods.find(x=>x.name.toLowerCase()===obj.name.toLowerCase());
+  if(existing){
+    existing.price=obj.price||existing.price||"";
+    existing.allergens=obj.allergens||existing.allergens||"";
+  }else{
+    state.foods.push({name:obj.name,group:kind==="soup"?"Polievka":"Hlavné",price:obj.price||"",allergens:obj.allergens||"",side:""});
+  }
+  renderFoods();
+  renderFoodOptions();
+  saveAll(true);
+  alert("Jedlo je uložené v databáze. Nabudúce sa cena a alergény doplnia automaticky.");
 }
 function saveCurrentDay(silent=false){
   const d=getDay(activeDay);
@@ -358,7 +434,9 @@ function copyPrevDay(){if(activeDay===0)return alert("Pondelok nemá predošlý 
 
 function addFood(){
   const name=$("foodName").value.trim(); if(!name)return alert("Zadaj názov jedla.");
-  state.foods.push({name,group:$("foodGroup").value,price:$("foodPrice").value.trim(),allergens:$("foodAllergens").value.trim(),side:$("foodSide").value.trim()});
+  const entry={name,group:$("foodGroup").value,price:$("foodPrice").value.trim(),allergens:$("foodAllergens").value.trim(),side:$("foodSide").value.trim()};
+  const existing=state.foods.find(x=>x.name.toLowerCase()===name.toLowerCase());
+  if(existing) Object.assign(existing,entry); else state.foods.push(entry);
   $("foodName").value=$("foodPrice").value=$("foodAllergens").value=$("foodSide").value="";
   renderFoods();renderFoodOptions();saveAll(true);
 }
