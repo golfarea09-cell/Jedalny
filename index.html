@@ -188,6 +188,7 @@ textarea{min-height:105px;resize:vertical}
     </div>
     <div class="filter-bar" id="foodFilters" style="margin-top:8px"></div>
     <p class="note">⭐ Ťuknutím na hviezdičku pridáš jedlo medzi obľúbené. Obľúbené sa zobrazujú aj pri výbere jedla do denného menu.</p>
+    <p class="note">Pizza kategória obsahuje presný zoznam 20 položiek z dodaného pizza lístka; alergény sú prevzaté priamo z neho.</p>
   </div>
   <div id="foodList" class="list"></div>
 </section>
@@ -500,9 +501,47 @@ if(!state.foods) state.foods=[];
 state.foods.forEach(f=>{if(f.favorite===undefined)f.favorite=false;});
 // Doplň vstavanú databázu aj používateľom, ktorí už aplikáciu používali pred aktualizáciou.
 const builtInCatalog=blankState();
+
+const PIZZA_CATALOG_VERSION=1;
+const PIZZA_CATALOG=[
+  {name:"Margerita",group:"Pizza",price:"",allergens:"1,7",side:"",pizzaOrder:1},
+  {name:"Regina",group:"Pizza",price:"",allergens:"1,7",side:"",pizzaOrder:2},
+  {name:"Cardinale",group:"Pizza",price:"",allergens:"1,7,12",side:"",pizzaOrder:3},
+  {name:"Lago Di Garda",group:"Pizza",price:"",allergens:"1,7",side:"",pizzaOrder:4},
+  {name:"Syrová",group:"Pizza",price:"",allergens:"1,7",side:"",pizzaOrder:5},
+  {name:"Smotanová",group:"Pizza",price:"",allergens:"1,7",side:"",pizzaOrder:6},
+  {name:"Tonno",group:"Pizza",price:"",allergens:"1,4,7",side:"",pizzaOrder:7},
+  {name:"Írska",group:"Pizza",price:"",allergens:"1,7",side:"",pizzaOrder:8},
+  {name:"Hawai",group:"Pizza",price:"",allergens:"1,7",side:"",pizzaOrder:9},
+  {name:"Siciliana",group:"Pizza",price:"",allergens:"1,7",side:"",pizzaOrder:10},
+  {name:"Primavera",group:"Pizza",price:"",allergens:"1,4,7",side:"",pizzaOrder:11},
+  {name:"Super",group:"Pizza",price:"",allergens:"1,7,12",side:"",pizzaOrder:12},
+  {name:"Rusticana",group:"Pizza",price:"",allergens:"1,3,7,12",side:"",pizzaOrder:13},
+  {name:"Mastin",group:"Pizza",price:"",allergens:"1,3,7,12",side:"",pizzaOrder:14},
+  {name:"Salem",group:"Pizza",price:"",allergens:"1,7",side:"",pizzaOrder:15},
+  {name:"Cesnakový posúch",group:"Pizza",price:"",allergens:"1",side:"",pizzaOrder:16},
+  {name:"Panini",group:"Pizza",price:"",allergens:"1,7",side:"",pizzaOrder:17},
+  {name:"Jarná",group:"Pizza",price:"",allergens:"1,7",side:"",pizzaOrder:18},
+  {name:"Šampiňónová",group:"Pizza",price:"",allergens:"1,7,12",side:"",pizzaOrder:19},
+  {name:"Mexikana",group:"Pizza",price:"",allergens:"1,7",side:"",pizzaOrder:20}
+];
+
 builtInCatalog.foods.forEach(f=>{
   if(!state.foods.some(x=>x.name.toLowerCase()===f.name.toLowerCase())) state.foods.push({...f,favorite:false});
 });
+
+// Jednorazovo nastav presný pizza zoznam podľa dodaného jedálneho lístka.
+// Hviezdičky sa pri zhodných názvoch zachovajú.
+if(state.pizzaCatalogVersion!==PIZZA_CATALOG_VERSION){
+  const oldFav=new Map(
+    state.foods.filter(f=>f.group==="Pizza").map(f=>[f.name.toLowerCase(),!!f.favorite])
+  );
+  state.foods=state.foods.filter(f=>f.group!=="Pizza");
+  PIZZA_CATALOG.forEach(p=>{
+    state.foods.push({...p,favorite:oldFav.get(p.name.toLowerCase())||false});
+  });
+  state.pizzaCatalogVersion=PIZZA_CATALOG_VERSION;
+}
 builtInCatalog.sides.forEach(s=>{
   if(!state.sides.some(x=>x.name.toLowerCase()===s.name.toLowerCase())) state.sides.push({...s});
 });
@@ -664,7 +703,10 @@ function renderFoodPicker(){
     const filterOk=modalFoodFilter==="all" ? true : modalFoodFilter==="fav" ? !!f.favorite : f.group===modalFoodFilter;
     return kindOk && filterOk && (!q||`${f.name} ${f.side||""}`.toLowerCase().includes(q));
   });
-  foods.sort((a,b)=>(Number(!!b.favorite)-Number(!!a.favorite)) || a.name.localeCompare(b.name,"sk"));
+  foods.sort((a,b)=>{
+    if(modalFoodFilter==="Pizza") return (a.pizzaOrder||999)-(b.pizzaOrder||999);
+    return (Number(!!b.favorite)-Number(!!a.favorite)) || a.name.localeCompare(b.name,"sk");
+  });
   $("foodPickList").innerHTML=foods.length?foods.map(f=>{
     const i=state.foods.indexOf(f);
     return `<div class="food-pick-row">
