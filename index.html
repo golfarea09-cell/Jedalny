@@ -239,11 +239,15 @@ textarea{min-height:105px;resize:vertical}
         <label>Cena<input id="customFoodPrice" inputmode="decimal" placeholder="napr. 7,50"></label>
         <label>Alergény<input id="customFoodAllergens" placeholder="napr. 1,3,7"></label>
       </div>
+      <label style="display:block;margin-top:8px">Príloha
+        <input id="customFoodSide" list="sideOptions" placeholder="Vyber alebo napíš vlastnú prílohu">
+      </label>
       <div class="modal-actions">
         <button class="btn primary" onclick="useCustomFood(false)">Použiť iba teraz</button>
-        <button class="btn green" onclick="useCustomFood(true)">Použiť a uložiť do databázy</button>
+        <button class="btn green" onclick="useCustomFood(true)">Použiť a uložiť jedlo do databázy</button>
+        <button class="btn secondary" onclick="saveCustomSideOnly()">Uložiť prílohu samostatne</button>
       </div>
-      <p class="note">Pri vlastnom jedle zadaj alergény raz. Ak ho uložíš do databázy, pri ďalšom výbere sa doplnia automaticky.</p>
+      <p class="note">Jedlo aj príloha sa ukladajú samostatne. Pri jedle uloženom v databáze sa nabudúce automaticky doplní cena, alergény aj jeho predvolená príloha.</p>
     </div>
   </div>
 </div>
@@ -256,6 +260,7 @@ textarea{min-height:105px;resize:vertical}
 </div>
 
 <datalist id="foodOptions"></datalist>
+<datalist id="sideOptions"></datalist>
 
 <script>
 const DAYS=["Pondelok","Utorok","Streda","Štvrtok","Piatok"];
@@ -290,6 +295,11 @@ function blankState(){
 }
 let state = JSON.parse(localStorage.getItem("tobbMenuStateV2")||"null") || blankState();
 if(!state.archive) state.archive=[];
+if(!state.sides) state.sides=[];
+Object.values(state.week?.days||{}).forEach(d=>{
+  (d.items||[]).forEach(x=>{if(x.side===undefined)x.side=""});
+  (d.soups||[]).forEach(x=>{if(x.side===undefined)x.side=""});
+});
 let activeDay=0;
 
 const $=id=>document.getElementById(id);
@@ -313,7 +323,7 @@ function dayISO(i){
 function emptyDay(){
   return {
     soups:[{name:"",price:"",allergens:""},{name:"",price:"",allergens:""}],
-    items:Array.from({length:6},()=>({name:"",price:"",allergens:""}))
+    items:Array.from({length:6},()=>({name:"",price:"",allergens:"",side:""}))
   };
 }
 function getDay(i){const k=dayISO(i); if(!state.week.days[k]) state.week.days[k]=emptyDay(); return state.week.days[k]}
@@ -340,7 +350,7 @@ function init(){
   $("email").value=state.settings.email||"";
   $("phone").value=state.settings.phone||"";
   $("dateFrom").onchange=()=>{state.week.from=mondayOf($("dateFrom").value);$("dateFrom").value=state.week.from;syncWeekDates();};
-  renderFoods();renderSides();renderFoodOptions();renderArchive();renderPreview();
+  renderFoods();renderSides();renderFoodOptions();renderSideOptions();renderArchive();renderPreview();
 }
 function syncWeekDates(redraw=true){
   const base=new Date(state.week.from+"T12:00:00");
@@ -380,6 +390,9 @@ function renderMenuEditor(){
       <div class="menu-grid"><div></div>
       <input value="${esc(x.allergens)}" data-all="item-${i}" placeholder="Alergény napr. 1,3,7">
       <button class="btn tiny danger" onclick="removeMenuItem(${i})">Odstrániť</button></div>
+      <div class="menu-grid"><div></div>
+      <input list="sideOptions" value="${esc(x.side||"")}" data-side="item-${i}" placeholder="Príloha – vyber alebo napíš vlastnú">
+      <button class="btn tiny secondary" onclick="saveItemSide(${i})">Uložiť prílohu</button></div>
     </div>`;
   });
   h+=`<button class="btn primary" style="width:100%;margin:4px 0 10px" onclick="addMenuItem()">+ Pridať položku jedla</button>`;
@@ -395,6 +408,7 @@ function openFoodModal(kind,i){
   $("customFoodName").value=obj.name||"";
   $("customFoodPrice").value=obj.price||"";
   $("customFoodAllergens").value=obj.allergens||"";
+  $("customFoodSide").value=obj.side||"";
   $("foodSearch").value="";
   showFoodModalTab("db");
   renderFoodPicker();
@@ -418,7 +432,7 @@ function renderFoodPicker(){
 function pickDbFood(index){
   const f=state.foods[index]; if(!f)return;
   const d=getDay(activeDay),obj=modalTarget.kind==="soup"?d.soups[modalTarget.i]:d.items[modalTarget.i];
-  obj.name=f.name; obj.price=f.price||""; obj.allergens=f.allergens||"";
+  obj.name=f.name; obj.price=f.price||""; obj.allergens=f.allergens||""; obj.side=f.side||"";
   closeFoodModal(); renderMenuEditor(); saveAll(true);
 }
 function useCustomFood(saveDb){
@@ -426,26 +440,50 @@ function useCustomFood(saveDb){
   if(!name)return alert("Napíš názov jedla.");
   const price=$("customFoodPrice").value.trim();
   const allergens=$("customFoodAllergens").value.trim();
+  const side=modalTarget.kind==="soup"?"":$("customFoodSide").value.trim();
   const d=getDay(activeDay),obj=modalTarget.kind==="soup"?d.soups[modalTarget.i]:d.items[modalTarget.i];
-  obj.name=name; obj.price=price; obj.allergens=allergens;
+  obj.name=name; obj.price=price; obj.allergens=allergens; obj.side=side;
   if(saveDb){
     let f=state.foods.find(x=>x.name.toLowerCase()===name.toLowerCase());
-    if(f){f.price=price||f.price||"";f.allergens=allergens||f.allergens||"";}
-    else state.foods.push({name,group:modalTarget.kind==="soup"?"Polievka":"Hlavné",price,allergens,side:""});
+    if(f){f.price=price||f.price||"";f.allergens=allergens||f.allergens||"";f.side=side||f.side||"";}
+    else state.foods.push({name,group:modalTarget.kind==="soup"?"Polievka":"Hlavné",price,allergens,side});
     renderFoods();renderFoodOptions();
   }
   closeFoodModal();renderMenuEditor();saveAll(true);
 }
+function renderSideOptions(){
+  $("sideOptions").innerHTML=state.sides.map(s=>`<option value="${esc(s.name)}"></option>`).join("");
+}
+function saveSideByName(name,allergens=""){
+  name=(name||"").trim(); if(!name)return false;
+  let side=state.sides.find(s=>s.name.toLowerCase()===name.toLowerCase());
+  if(side){ if(allergens) side.allergens=allergens; }
+  else state.sides.push({name,allergens});
+  renderSides();renderSideOptions();saveAll(true); return true;
+}
+function saveCustomSideOnly(){
+  const name=$("customFoodSide").value.trim();
+  if(!name)return alert("Napíš alebo vyber prílohu.");
+  saveSideByName(name);
+  alert("Príloha je uložená samostatne v databáze príloh.");
+}
+function saveItemSide(i){
+  saveCurrentDay(true);
+  const side=(getDay(activeDay).items[i].side||"").trim();
+  if(!side)return alert("Najprv zadaj prílohu.");
+  saveSideByName(side);
+  alert("Príloha je uložená samostatne v databáze príloh.");
+}
 function addMenuItem(){
   saveCurrentDay(true);
-  getDay(activeDay).items.push({name:"",price:"",allergens:""});
+  getDay(activeDay).items.push({name:"",price:"",allergens:"",side:""});
   renderMenuEditor();saveAll(true);
   setTimeout(()=>openFoodModal("item",getDay(activeDay).items.length-1),50);
 }
 function removeMenuItem(i){
   saveCurrentDay(true);
   const d=getDay(activeDay);d.items.splice(i,1);
-  if(!d.items.length)d.items.push({name:"",price:"",allergens:""});
+  if(!d.items.length)d.items.push({name:"",price:"",allergens:"",side:""});
   renderMenuEditor();saveAll(true);
 }
 function clearSoup(i){getDay(activeDay).soups[i]={name:"",price:"",allergens:""};renderMenuEditor();saveAll(true)}
@@ -456,6 +494,7 @@ function saveCurrentDay(silent=false){
     const [kind,i]=inp.dataset.all.split("-");(kind==="soup"?d.soups[+i]:d.items[+i]).allergens=inp.value.trim();
   });
   $("menuEditor").querySelectorAll("[data-price]").forEach(inp=>{const i=+inp.dataset.price.split("-")[1];d.items[i].price=inp.value.trim()});
+  $("menuEditor").querySelectorAll("[data-side]").forEach(inp=>{const i=+inp.dataset.side.split("-")[1];d.items[i].side=inp.value.trim()});
   saveAll(silent);
 }
 function clearItem(i){getDay(activeDay).items[i]={name:"",price:"",allergens:""};renderMenuEditor();saveAll(true)}
@@ -490,14 +529,14 @@ function addSide(){
   const n=$("sideName").value.trim();if(!n)return;
   state.sides.push({name:n,allergens:$("sideAllergens").value.trim()});
   $("sideName").value=$("sideAllergens").value="";
-  renderSides();saveAll(true);
+  renderSides();renderSideOptions();saveAll(true);
 }
 function renderSides(){
   $("sideList").innerHTML=state.sides.map((s,i)=>`<div class="item"><div class="item-head"><div><b>${esc(s.name)}</b><div class="meta">${s.allergens?"alergény "+esc(s.allergens):"bez zadaných alergénov"}</div></div>
   <div class="toolbar"><button class="btn tiny secondary" onclick="editSide(${i})">Upraviť</button><button class="btn tiny danger" onclick="deleteSide(${i})">Zmazať</button></div></div></div>`).join("");
 }
-function editSide(i){const s=state.sides[i];const n=prompt("Názov prílohy:",s.name);if(n===null)return;const a=prompt("Alergény:",s.allergens||"");if(a===null)return;s.name=n.trim();s.allergens=a.trim();renderSides();saveAll(true)}
-function deleteSide(i){if(confirm("Zmazať prílohu?")){state.sides.splice(i,1);renderSides();saveAll(true)}}
+function editSide(i){const s=state.sides[i];const n=prompt("Názov prílohy:",s.name);if(n===null)return;const a=prompt("Alergény:",s.allergens||"");if(a===null)return;s.name=n.trim();s.allergens=a.trim();renderSides();renderSideOptions();saveAll(true)}
+function deleteSide(i){if(confirm("Zmazať prílohu?")){state.sides.splice(i,1);renderSides();renderSideOptions();saveAll(true)}}
 
 function saveSettings(){
   state.settings={restaurantName:$("restaurantName").value.trim(),footerText:$("footerText").value,email:$("email").value.trim(),phone:$("phone").value.trim()};
@@ -534,7 +573,7 @@ function renderPreview(){
       if(x.name) h+=`<div class="entry"><div>${idx===0?"A":"B"}. Polievka: ${esc(x.name)}${x.allergens?` (${esc(x.allergens)})`:""}</div><div></div></div>`;
     });
     d.items.forEach((x,idx)=>{
-      if(x.name) h+=`<div class="entry"><div>${idx+1}. ${esc(x.name)}${x.allergens?` (${esc(x.allergens)})`:""}</div><div class="price">${euro(esc(x.price))}</div></div>`;
+      if(x.name) h+=`<div class="entry"><div>${idx+1}. ${esc(x.name)}${x.side?` – ${esc(x.side)}`:""}${x.allergens?` (${esc(x.allergens)})`:""}</div><div class="price">${euro(esc(x.price))}</div></div>`;
     });
     h+=`</div>`;
   });
