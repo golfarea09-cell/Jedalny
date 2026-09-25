@@ -1,0 +1,695 @@
+<!doctype html>
+<html lang="sk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#151515">
+<title>TOBB Menu</title>
+<link rel="manifest" href="manifest.json">
+<style>
+:root{
+  --bg:#f3f0e9; --card:#fff; --ink:#171717; --muted:#6f6f6f; --gold:#c49538;
+  --line:#ddd6c8; --danger:#b42318; --green:#176b3a; --dark:#171717;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink)}
+header{position:sticky;top:0;z-index:30;background:#111;color:#fff;padding:10px 12px calc(10px + env(safe-area-inset-top));display:flex;align-items:center;justify-content:space-between}
+.brand{font-weight:900;letter-spacing:.7px}.brand span{color:#d2a553}
+header button{border:0;border-radius:10px;padding:9px 12px;font-weight:700}
+nav{display:flex;gap:7px;overflow:auto;padding:9px 10px;background:#1b1b1b;position:sticky;top:calc(49px + env(safe-area-inset-top));z-index:29}
+nav button{border:0;border-radius:9px;padding:10px 12px;background:#2a2a2a;color:#fff;white-space:nowrap}
+nav button.active{background:var(--gold);color:#111;font-weight:800}
+main{padding:11px 11px 90px;max-width:1000px;margin:auto}
+section{display:none} section.active{display:block}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:11px;box-shadow:0 2px 10px rgba(0,0,0,.035)}
+h2,h3{margin:0 0 10px}
+label{font-size:13px;color:#4f4f4f}
+input,select,textarea,button{font:inherit}
+input,select,textarea{width:100%;padding:10px;border:1px solid #cfcfcf;border-radius:9px;background:#fff;color:#111}
+textarea{min-height:105px;resize:vertical}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.grid3{display:grid;grid-template-columns:1.3fr .7fr .8fr;gap:8px}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap}
+.btn{border:0;border-radius:10px;padding:10px 12px;font-weight:700}
+.primary{background:var(--gold);color:#111}
+.green{background:#176b3a;color:#fff}
+.secondary{background:#eee;color:#111}
+.danger{background:#fde9e6;color:var(--danger)}
+.tiny{padding:7px 9px;font-size:13px}
+.list{display:grid;gap:8px}
+.item{border:1px solid var(--line);border-radius:11px;background:#fff;padding:10px}
+.item-head{display:flex;justify-content:space-between;gap:8px;align-items:center}
+.meta{font-size:12px;color:var(--muted);margin-top:4px}
+.day-tabs{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.day-tabs button{border:0;border-radius:9px;padding:9px 4px;background:#ece8df}
+.day-tabs button.active{background:var(--gold);font-weight:800}
+.menu-block{border:1px solid #e2ded5;border-radius:11px;padding:9px;margin-bottom:8px}
+.menu-grid{display:grid;grid-template-columns:32px 1fr 77px;gap:7px;align-items:center}
+.menu-grid + .menu-grid{margin-top:6px}
+.menu-choice{display:grid;grid-template-columns:1fr;gap:6px;margin:6px 0}
+.menu-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:7px}
+.menu-actions .btn{flex:1 1 auto}
+.select-label{font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.03em}
+.num{font-weight:800;text-align:center}
+.helper{font-size:12px;color:var(--muted)}
+.preview-wrap{overflow:auto;-webkit-overflow-scrolling:touch}
+.paper{
+  background:#fff;color:#121212;width:794px;min-height:1123px;margin:0 auto;padding:28px 38px 26px;
+  font-family:"Times New Roman",Times,serif;box-shadow:0 0 0 1px #ddd,0 8px 24px rgba(0,0,0,.12);
+}
+.paper .top{display:flex;justify-content:space-between;align-items:flex-start;gap:18px}
+.paper .title{font-size:27px;font-weight:800;line-height:1.06}
+.paper .range{font-size:26px;font-weight:800;line-height:1.08}
+.paper .logo{font-family:Georgia,"Times New Roman",serif;text-align:right;font-size:23px;font-weight:800;line-height:.92}
+.paper .logo small{font-size:13px;font-weight:500}
+.paper .day{margin-top:11px}
+.paper .day-head{display:grid;grid-template-columns:1fr 72px;gap:8px;font-size:17px;font-weight:800}
+.paper .entry{display:grid;grid-template-columns:1fr 72px;gap:8px;font-size:14.2px;line-height:1.19;margin:2px 0}
+.paper .price{text-align:right;white-space:nowrap}
+.paper .foot{font-size:11.4px;line-height:1.22;margin-top:18px}
+.paper hr{border:0;border-top:1px solid #e7e3da;margin:10px 0}
+.badge{display:inline-block;background:#f3ead7;border-radius:7px;padding:2px 6px;font-size:11px;margin-left:5px}
+.bottom-save{position:fixed;left:0;right:0;bottom:0;padding:9px 11px calc(9px + env(safe-area-inset-bottom));background:rgba(243,240,233,.96);backdrop-filter:blur(10px);border-top:1px solid #ddd;z-index:25}
+.bottom-save .toolbar{max-width:980px;margin:auto}
+.note{font-size:12px;color:var(--muted);line-height:1.35}
+.choice-field{cursor:pointer;background:#fff;caret-color:transparent}
+.choice-field:focus{outline:none;border-color:#c49538;box-shadow:0 0 0 3px rgba(196,149,56,.18)}
+.modal-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.48);z-index:100;align-items:flex-end;justify-content:center}
+.modal-backdrop.show{display:flex}
+.food-modal{background:#fff;width:min(680px,100%);max-height:88vh;border-radius:20px 20px 0 0;padding:14px 14px calc(16px + env(safe-area-inset-bottom));overflow:auto;box-shadow:0 -10px 35px rgba(0,0,0,.22)}
+.modal-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}
+.modal-head h3{margin:0;font-size:22px}.modal-close{border:0;background:#eee;border-radius:999px;width:38px;height:38px;font-size:22px}
+.modal-tabs{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:8px 0 10px}.modal-tabs button{border:0;border-radius:10px;padding:11px;background:#eee;font-weight:800}.modal-tabs button.active{background:var(--gold)}
+.food-search{margin-bottom:9px}.food-pick-list{display:grid;gap:7px;max-height:42vh;overflow:auto}
+.food-pick{border:1px solid var(--line);border-radius:12px;padding:10px;background:#fff;text-align:left}.food-pick b{display:block}.food-pick .meta{margin-top:4px}
+.custom-form{display:none}.custom-form.show{display:block}.db-panel.hide{display:none}
+.modal-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.modal-actions .btn{flex:1}
+
+@media(max-width:700px){
+  .grid2,.grid3{grid-template-columns:1fr}
+  .menu-grid{grid-template-columns:28px 1fr 74px}
+  main{padding-left:9px;padding-right:9px}
+}
+@media print{
+  @page{size:A4 portrait;margin:0}
+  body{background:white}
+  header,nav,.no-print,.bottom-save{display:none!important}
+  main{padding:0;max-width:none}
+  section{display:none!important}
+  #preview{display:block!important}
+  #preview .card{display:none!important}
+  .preview-wrap{overflow:visible}
+  .paper{box-shadow:none;width:210mm;min-height:297mm;margin:0;padding:8mm 10mm}
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><span>TOBB</span> MENU</div>
+  <button onclick="backupData()">Záloha</button>
+</header>
+
+<nav>
+  <button data-tab="menu" class="active">Menu</button>
+  <button data-tab="foods">Jedlá</button>
+  <button data-tab="sides">Prílohy</button>
+  <button data-tab="archive">Archív</button>
+  <button data-tab="settings">Nastavenia</button>
+  <button data-tab="preview">A4 náhľad</button>
+</nav>
+
+<main>
+<section id="menu" class="active">
+  <div class="card">
+    <h2>Týždenné menu</h2>
+    <div class="grid2">
+      <label>Začiatok týždňa<input type="date" id="dateFrom"></label>
+      <label>Koniec týždňa<input type="date" id="dateTo" readonly></label>
+    </div>
+    <div style="height:9px"></div>
+    <div class="day-tabs" id="dayTabs"></div>
+  </div>
+
+  <div class="card">
+    <h3 id="dayTitle"></h3>
+    <div id="menuEditor"></div>
+    <div class="toolbar">
+      <button class="btn primary" onclick="saveCurrentDay()">Uložiť deň</button>
+      <button class="btn secondary" onclick="copyPrevDay()">Kopírovať predošlý deň</button>
+      <button class="btn secondary" onclick="clearDay()">Vyčistiť deň</button>
+    </div>
+  </div>
+</section>
+
+<section id="foods">
+  <div class="card">
+    <h2>Databáza jedál</h2>
+    <p class="note">Jedlo si tu uložíš spolu s cenou a alergénmi. Keď ho potom vyberieš v dennom menu, cena a alergény sa doplnia automaticky.</p>
+    <div class="grid2">
+      <input id="foodName" placeholder="Názov jedla">
+      <select id="foodGroup">
+        <option>Polievka</option><option>Hlavné</option><option>Pizza</option><option>Business</option><option>Fit</option>
+      </select>
+    </div>
+    <div class="grid3" style="margin-top:8px">
+      <input id="foodPrice" inputmode="decimal" placeholder="Cena napr. 7,50">
+      <input id="foodAllergens" placeholder="Alergény 1,3,7">
+      <input id="foodSide" placeholder="Príloha">
+    </div>
+    <button class="btn primary" style="margin-top:8px" onclick="addFood()">+ Pridať jedlo</button>
+  </div>
+  <div id="foodList" class="list"></div>
+</section>
+
+<section id="sides">
+  <div class="card">
+    <h2>Databáza príloh</h2>
+    <div class="grid2">
+      <input id="sideName" placeholder="Názov prílohy">
+      <input id="sideAllergens" placeholder="Alergény">
+    </div>
+    <button class="btn primary" style="margin-top:8px" onclick="addSide()">+ Pridať prílohu</button>
+  </div>
+  <div id="sideList" class="list"></div>
+</section>
+
+<section id="archive">
+  <div class="card">
+    <h2>Archív menu</h2>
+    <p class="note">Ulož si hotový týždeň. Neskôr ho môžeš obnoviť a upraviť.</p>
+    <button class="btn primary" onclick="archiveWeek()">Uložiť tento týždeň do archívu</button>
+  </div>
+  <div id="archiveList" class="list"></div>
+</section>
+
+<section id="settings">
+  <div class="card">
+    <h2>Nastavenia tlače</h2>
+    <label>Názov prevádzky<input id="restaurantName"></label>
+    <div class="grid2" style="margin-top:8px">
+      <label>E-mail<input id="email"></label>
+      <label>Telefón<input id="phone"></label>
+    </div>
+    <label style="display:block;margin-top:8px">Text v spodnej časti A4
+      <textarea id="footerText"></textarea>
+    </label>
+    <button class="btn primary" style="margin-top:8px" onclick="saveSettings()">Uložiť nastavenia</button>
+  </div>
+
+  <div class="card">
+    <h3>Záloha / obnova</h3>
+    <p class="note">Odporúčam občas uložiť zálohu. Obsahuje jedlá, prílohy, archív aj aktuálne menu.</p>
+    <div class="toolbar">
+      <button class="btn secondary" onclick="backupData()">Stiahnuť zálohu</button>
+      <label class="btn secondary" style="cursor:pointer">Obnoviť zo zálohy
+        <input type="file" accept="application/json" onchange="restoreData(this.files[0])" style="display:none">
+      </label>
+    </div>
+  </div>
+</section>
+
+<section id="preview">
+  <div class="card no-print">
+    <h2>Náhľad A4</h2>
+    <div class="toolbar">
+      <button class="btn green" onclick="window.print()">Tlačiť / uložiť PDF</button>
+      <button class="btn secondary" onclick="renderPreview()">Obnoviť</button>
+    </div>
+    <p class="note">Na iPhone po otvorení tlače rozťahni náhľad dvoma prstami. Potom použi Zdieľať → Uložiť do Súborov alebo odošli PDF.</p>
+  </div>
+  <div class="preview-wrap"><div class="paper" id="paper"></div></div>
+</section>
+</main>
+
+
+<div class="modal-backdrop no-print" id="foodModal" onclick="if(event.target===this)closeFoodModal()">
+  <div class="food-modal">
+    <div class="modal-head"><h3 id="foodModalTitle">Vybrať jedlo</h3><button class="modal-close" onclick="closeFoodModal()">×</button></div>
+    <div class="modal-tabs">
+      <button id="tabDb" class="active" onclick="showFoodModalTab('db')">Vybrať z databázy</button>
+      <button id="tabCustom" onclick="showFoodModalTab('custom')">Vlastné jedlo</button>
+    </div>
+    <div class="db-panel" id="dbPanel">
+      <input class="food-search" id="foodSearch" placeholder="Hľadať jedlo…" oninput="renderFoodPicker()">
+      <div class="food-pick-list" id="foodPickList"></div>
+    </div>
+    <div class="custom-form" id="customPanel">
+      <label>Názov jedla<input id="customFoodName" placeholder="Napíš názov"></label>
+      <div class="grid2" style="margin-top:8px">
+        <label>Cena<input id="customFoodPrice" inputmode="decimal" placeholder="napr. 7,50"></label>
+        <label>Alergény<input id="customFoodAllergens" placeholder="napr. 1,3,7"></label>
+      </div>
+      <label style="display:block;margin-top:8px">Príloha
+        <input id="customFoodSide" list="sideOptions" placeholder="Vyber alebo napíš vlastnú prílohu">
+      </label>
+      <div class="modal-actions">
+        <button class="btn primary" onclick="useCustomFood(false)">Použiť iba teraz</button>
+        <button class="btn green" onclick="useCustomFood(true)">Použiť a uložiť jedlo do databázy</button>
+        <button class="btn secondary" onclick="saveCustomSideOnly()">Uložiť prílohu samostatne</button>
+      </div>
+      <p class="note">Jedlo aj príloha sa ukladajú samostatne. Pri jedle uloženom v databáze sa nabudúce automaticky doplní cena, alergény aj jeho predvolená príloha.</p>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop no-print" id="sideModal" onclick="if(event.target===this)closeSideModal()">
+  <div class="food-modal">
+    <div class="modal-head"><h3>Vybrať prílohu</h3><button class="modal-close" onclick="closeSideModal()">×</button></div>
+    <div class="modal-tabs">
+      <button id="sideTabDb" class="active" onclick="showSideModalTab('db')">Vybrať z databázy</button>
+      <button id="sideTabCustom" onclick="showSideModalTab('custom')">Vlastná príloha</button>
+    </div>
+    <div id="sideDbPanel">
+      <input class="food-search" id="sideSearch" placeholder="Hľadať prílohu…" oninput="renderSidePicker()">
+      <div class="food-pick-list" id="sidePickList"></div>
+    </div>
+    <div class="custom-form" id="sideCustomPanel">
+      <label>Názov prílohy<input id="customSideName" placeholder="Napr. ryža, hranolky, zemiaková kaša"></label>
+      <label style="display:block;margin-top:8px">Alergény prílohy<input id="customSideAllergens" placeholder="napr. 7"></label>
+      <div class="modal-actions">
+        <button class="btn primary" onclick="useCustomSide(false)">Použiť iba teraz</button>
+        <button class="btn green" onclick="useCustomSide(true)">Použiť a uložiť do databázy</button>
+      </div>
+      <p class="note">Ak má príloha alergény, automaticky sa doplnia k alergénom jedla.</p>
+    </div>
+  </div>
+</div>
+
+<div class="bottom-save no-print">
+  <div class="toolbar">
+    <button class="btn primary" onclick="saveAll()">Uložiť všetko</button>
+    <button class="btn green" onclick="openPreview()">A4 náhľad</button>
+  </div>
+</div>
+
+<datalist id="foodOptions"></datalist>
+<datalist id="sideOptions"></datalist>
+
+<script>
+const DAYS=["Pondelok","Utorok","Streda","Štvrtok","Piatok"];
+const defaultFooter=`🍃 - bezmäsité jedlo
+Pôvod mäsa: bravčové mäso (SK, CZ, DE, ES), hovädzie mäso (SK, CZ, BE), hydina (SK, HU, UA)
+Hmotnosť jedál v surovom stave: mäso 130 g, prílohy 200 g, šaláty 120 g, pizza 450–550 g, polievka 0,33 l.
+Ceny sú uvedené s DPH. Business menu sa podáva od 11:00 hodiny. Príprava Business menu trvá 20 minút.
+Alergény: 1. obilniny, 2. kôrovce, 3. vajcia, 4. ryby, 5. arašidy, 6. sója, 7. mlieko, 8. orechy, 9. zeler, 10. horčica, 11. sezamové semená, 12. oxid siričitý, 13. siričitany, 14. mäkkýše, 15. huby, 16. obilniny bezlepkové, 17. strukoviny.`;
+
+function blankState(){
+  return {
+    foods:[
+      {name:"Rajčinová s cestovinou a syrom",group:"Polievka",price:"",allergens:"1,3,7",side:""},
+      {name:"Kuracie prsia zapekané so šunkou, broskyňou a syrom",group:"Hlavné",price:"7,50",allergens:"7",side:"ryža"},
+      {name:"Guličky z mletého mäsa",group:"Hlavné",price:"7,50",allergens:"1,3,7",side:"tagliatelle"},
+      {name:"Pizza Desperado",group:"Pizza",price:"7,50",allergens:"1,7",side:""},
+      {name:"Burger s trhaným bravčovým mäsom",group:"Business",price:"8,50",allergens:"1,3,7,10",side:"hranolky"},
+      {name:"Hummus s pečenou tekvicou a halloumi syrom",group:"Fit",price:"8,00",allergens:"1,7",side:""}
+    ],
+    sides:[
+      {name:"Slovenská ryža",allergens:""},
+      {name:"Hranolky",allergens:""},
+      {name:"Zemiaková kaša",allergens:"7"},
+      {name:"Opekané zemiaky",allergens:""},
+      {name:"Šalát",allergens:""},
+      {name:"Tarhoňa",allergens:"1,7"}
+    ],
+    settings:{restaurantName:"TOBB RESTAURANT",footerText:defaultFooter,email:"tobbrestaurant@gmail.com",phone:"+421 34 651 67 87"},
+    week:{from:"2026-09-21",to:"2026-09-25",days:{}},
+    archive:[]
+  };
+}
+let state = JSON.parse(localStorage.getItem("tobbMenuStateV2")||"null") || blankState();
+if(!state.archive) state.archive=[];
+if(!state.sides) state.sides=[];
+Object.values(state.week?.days||{}).forEach(d=>{
+  (d.items||[]).forEach(x=>{if(x.side===undefined)x.side=""});
+  (d.soups||[]).forEach(x=>{if(x.side===undefined)x.side=""});
+});
+let activeDay=0;
+
+const $=id=>document.getElementById(id);
+function esc(s){return (s??"").toString().replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[m]))}
+function euro(v){v=(v||"").trim(); return v ? (v.includes("€")?v:v+" €") : ""}
+function fmtDate(iso){if(!iso)return ""; let [y,m,d]=iso.split("-"); return `${d}.${m}.${y}`}
+function saveAll(silent=false){
+  localStorage.setItem("tobbMenuStateV2",JSON.stringify(state));
+  renderPreview();
+  if(!silent) alert("Uložené");
+}
+function mondayOf(dateStr){
+  const d=new Date((dateStr||new Date().toISOString().slice(0,10))+"T12:00:00");
+  const day=d.getDay(); const diff=(day===0?-6:1-day);
+  d.setDate(d.getDate()+diff);
+  return d.toISOString().slice(0,10);
+}
+function dayISO(i){
+  const d=new Date(state.week.from+"T12:00:00"); d.setDate(d.getDate()+i); return d.toISOString().slice(0,10);
+}
+function emptyDay(){
+  return {
+    soups:[{name:"",price:"",allergens:""},{name:"",price:"",allergens:""}],
+    items:Array.from({length:6},()=>({name:"",price:"",allergens:"",side:""}))
+  };
+}
+function getDay(i){const k=dayISO(i); if(!state.week.days[k]) state.week.days[k]=emptyDay(); return state.week.days[k]}
+
+document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{
+  document.querySelectorAll("nav button").forEach(x=>x.classList.remove("active"));
+  document.querySelectorAll("section").forEach(x=>x.classList.remove("active"));
+  b.classList.add("active"); $(b.dataset.tab).classList.add("active");
+  if(b.dataset.tab==="preview") renderPreview();
+  if(b.dataset.tab==="archive") renderArchive();
+});
+function switchTab(id){
+  const b=[...document.querySelectorAll("nav button")].find(x=>x.dataset.tab===id);
+  if(b) b.click();
+}
+function openPreview(){saveCurrentDay(true);switchTab("preview")}
+
+function init(){
+  if(!state.week.from) state.week.from=mondayOf();
+  $("dateFrom").value=state.week.from;
+  syncWeekDates(false);
+  $("restaurantName").value=state.settings.restaurantName||"";
+  $("footerText").value=state.settings.footerText||"";
+  $("email").value=state.settings.email||"";
+  $("phone").value=state.settings.phone||"";
+  $("dateFrom").onchange=()=>{state.week.from=mondayOf($("dateFrom").value);$("dateFrom").value=state.week.from;syncWeekDates();};
+  renderFoods();renderSides();renderFoodOptions();renderSideOptions();renderArchive();renderPreview();
+}
+function syncWeekDates(redraw=true){
+  const base=new Date(state.week.from+"T12:00:00");
+  const fri=new Date(base); fri.setDate(base.getDate()+4);
+  state.week.to=fri.toISOString().slice(0,10);
+  $("dateTo").value=state.week.to;
+  renderDayTabs();
+  if(redraw) renderMenuEditor(); else renderMenuEditor();
+  saveAll(true);
+}
+function renderDayTabs(){
+  $("dayTabs").innerHTML=DAYS.map((d,i)=>`<button class="${i===activeDay?'active':''}" onclick="activeDay=${i};renderDayTabs();renderMenuEditor()">${d}<br><small>${fmtDate(dayISO(i)).slice(0,5)}</small></button>`).join("");
+}
+function renderMenuEditor(){
+  const d=getDay(activeDay);
+  if(!Array.isArray(d.items)) d.items=[];
+  if(!d.items.length) d.items.push({name:"",price:"",allergens:""});
+  $("dayTitle").textContent=`${DAYS[activeDay]} ${fmtDate(dayISO(activeDay))}`;
+  let h="";
+  ["A","B"].forEach((lab,idx)=>{
+    const x=d.soups[idx];
+    h+=`<div class="menu-block">
+      <div class="menu-grid"><div class="num">${lab}.</div>
+      <input class="choice-field" readonly value="${esc(x.name)}" onclick="openFoodModal('soup',${idx})" placeholder="Ťukni – vybrať polievku">
+      <input value="${esc(x.allergens)}" data-all="soup-${idx}" placeholder="Alerg."></div>
+      <div class="menu-actions">
+        <button class="btn tiny secondary" onclick="openFoodModal('soup',${idx})">Vybrať / vlastná</button>
+        <button class="btn tiny danger" onclick="clearSoup(${idx})">Vymazať</button>
+      </div>
+    </div>`;
+  });
+  d.items.forEach((x,i)=>{
+    h+=`<div class="menu-block">
+      <div class="menu-grid"><div class="num">${i+1}.</div>
+      <input class="choice-field" readonly value="${esc(x.name)}" onclick="openFoodModal('item',${i})" placeholder="Ťukni – vybrať jedlo">
+      <input value="${esc(x.price)}" data-price="item-${i}" placeholder="Cena"></div>
+      <div class="menu-grid"><div></div>
+      <input value="${esc(x.allergens)}" data-all="item-${i}" placeholder="Alergény napr. 1,3,7">
+      <button class="btn tiny danger" onclick="removeMenuItem(${i})">Odstrániť</button></div>
+      <div class="menu-grid"><div></div>
+      <input class="choice-field" readonly value="${esc(x.side||"")}" onclick="openSideModal(${i})" placeholder="Ťukni – vybrať prílohu">
+      <button class="btn tiny secondary" onclick="openSideModal(${i})">Vybrať / vlastná</button></div>
+    </div>`;
+  });
+  h+=`<button class="btn primary" style="width:100%;margin:4px 0 10px" onclick="addMenuItem()">+ Pridať položku jedla</button>`;
+  $("menuEditor").innerHTML=h;
+}
+
+let modalTarget={kind:"item",i:0};
+function openFoodModal(kind,i){
+  saveCurrentDay(true);
+  modalTarget={kind,i};
+  $("foodModalTitle").textContent=kind==="soup"?"Vybrať polievku":"Vybrať jedlo";
+  const d=getDay(activeDay),obj=kind==="soup"?d.soups[i]:d.items[i];
+  $("customFoodName").value=obj.name||"";
+  $("customFoodPrice").value=obj.price||"";
+  $("customFoodAllergens").value=obj.allergens||"";
+  $("customFoodSide").value=obj.side||"";
+  $("foodSearch").value="";
+  showFoodModalTab("db");
+  renderFoodPicker();
+  $("foodModal").classList.add("show");
+}
+function closeFoodModal(){$("foodModal").classList.remove("show")}
+function showFoodModalTab(tab){
+  const db=tab==="db";
+  $("tabDb").classList.toggle("active",db);
+  $("tabCustom").classList.toggle("active",!db);
+  $("dbPanel").classList.toggle("hide",!db);
+  $("customPanel").classList.toggle("show",!db);
+  if(!db)setTimeout(()=>$("customFoodName").focus(),50);
+}
+function renderFoodPicker(){
+  const q=($("foodSearch")?.value||"").trim().toLowerCase();
+  const kind=modalTarget.kind;
+  const foods=state.foods.filter(f=>(kind==="soup"?f.group==="Polievka":f.group!=="Polievka") && (!q||f.name.toLowerCase().includes(q)));
+  $("foodPickList").innerHTML=foods.length?foods.map((f,idx)=>`<button class="food-pick" onclick="pickDbFood(${state.foods.indexOf(f)})"><b>${esc(f.name)}</b><div class="meta">${f.price?euro(esc(f.price))+" • ":""}${f.allergens?"alergény "+esc(f.allergens):"bez zadaných alergénov"}</div></button>`).join(""):`<div class="item"><span class="note">Nič sa nenašlo. Prejdi na „Vlastné jedlo“.</span></div>`;
+}
+function pickDbFood(index){
+  const f=state.foods[index]; if(!f)return;
+  const d=getDay(activeDay),obj=modalTarget.kind==="soup"?d.soups[modalTarget.i]:d.items[modalTarget.i];
+  obj.name=f.name; obj.price=f.price||""; obj.allergens=f.allergens||""; obj.side=f.side||"";
+  closeFoodModal(); renderMenuEditor(); saveAll(true);
+}
+function useCustomFood(saveDb){
+  const name=$("customFoodName").value.trim();
+  if(!name)return alert("Napíš názov jedla.");
+  const price=$("customFoodPrice").value.trim();
+  const allergens=$("customFoodAllergens").value.trim();
+  const side=modalTarget.kind==="soup"?"":$("customFoodSide").value.trim();
+  const d=getDay(activeDay),obj=modalTarget.kind==="soup"?d.soups[modalTarget.i]:d.items[modalTarget.i];
+  obj.name=name; obj.price=price; obj.allergens=allergens; obj.side=side;
+  if(saveDb){
+    let f=state.foods.find(x=>x.name.toLowerCase()===name.toLowerCase());
+    if(f){f.price=price||f.price||"";f.allergens=allergens||f.allergens||"";f.side=side||f.side||"";}
+    else state.foods.push({name,group:modalTarget.kind==="soup"?"Polievka":"Hlavné",price,allergens,side});
+    renderFoods();renderFoodOptions();
+  }
+  closeFoodModal();renderMenuEditor();saveAll(true);
+}
+function renderSideOptions(){
+  $("sideOptions").innerHTML=state.sides.map(s=>`<option value="${esc(s.name)}"></option>`).join("");
+}
+function saveSideByName(name,allergens=""){
+  name=(name||"").trim(); if(!name)return false;
+  let side=state.sides.find(s=>s.name.toLowerCase()===name.toLowerCase());
+  if(side){ if(allergens) side.allergens=allergens; }
+  else state.sides.push({name,allergens});
+  renderSides();renderSideOptions();saveAll(true); return true;
+}
+function saveCustomSideOnly(){
+  const name=$("customFoodSide").value.trim();
+  if(!name)return alert("Napíš alebo vyber prílohu.");
+  saveSideByName(name);
+  alert("Príloha je uložená samostatne v databáze príloh.");
+}
+function saveItemSide(i){
+  saveCurrentDay(true);
+  const side=(getDay(activeDay).items[i].side||"").trim();
+  if(!side)return alert("Najprv zadaj prílohu.");
+  saveSideByName(side);
+  alert("Príloha je uložená samostatne v databáze príloh.");
+}
+
+let sideTargetIndex=0;
+function mergeAllergens(base,extra){
+  const a=(base||"").split(",").map(x=>x.trim()).filter(Boolean);
+  const b=(extra||"").split(",").map(x=>x.trim()).filter(Boolean);
+  return [...new Set([...a,...b])].sort((x,y)=>Number(x)-Number(y)).join(",");
+}
+function openSideModal(i){
+  saveCurrentDay(true);
+  sideTargetIndex=i;
+  const obj=getDay(activeDay).items[i];
+  $("sideSearch").value="";
+  $("customSideName").value=obj.side||"";
+  $("customSideAllergens").value="";
+  showSideModalTab("db");
+  renderSidePicker();
+  $("sideModal").classList.add("show");
+}
+function closeSideModal(){$("sideModal").classList.remove("show")}
+function showSideModalTab(tab){
+  const db=tab==="db";
+  $("sideTabDb").classList.toggle("active",db);
+  $("sideTabCustom").classList.toggle("active",!db);
+  $("sideDbPanel").style.display=db?"block":"none";
+  $("sideCustomPanel").style.display=db?"none":"block";
+  if(db)renderSidePicker();
+}
+function renderSidePicker(){
+  const q=($("sideSearch").value||"").trim().toLowerCase();
+  const sides=state.sides.filter(s=>!q||s.name.toLowerCase().includes(q));
+  $("sidePickList").innerHTML=sides.length?sides.map((s,idx)=>`<button class="food-pick" onclick="pickDbSide(${state.sides.indexOf(s)})"><b>${esc(s.name)}</b><div class="meta">${s.allergens?"alergény "+esc(s.allergens):"bez zadaných alergénov"}</div></button>`).join(""):`<div class="item"><span class="note">Nič sa nenašlo. Prejdi na „Vlastná príloha“.</span></div>`;
+}
+function pickDbSide(index){
+  const s=state.sides[index];
+  const obj=getDay(activeDay).items[sideTargetIndex];
+  obj.side=s.name;
+  if(s.allergens)obj.allergens=mergeAllergens(obj.allergens,s.allergens);
+  closeSideModal();renderMenuEditor();saveAll(true);
+}
+function useCustomSide(saveToDb){
+  const name=$("customSideName").value.trim();
+  const allergens=$("customSideAllergens").value.trim();
+  if(!name)return alert("Zadaj názov prílohy.");
+  const obj=getDay(activeDay).items[sideTargetIndex];
+  obj.side=name;
+  if(allergens)obj.allergens=mergeAllergens(obj.allergens,allergens);
+  if(saveToDb)saveSideByName(name,allergens);
+  closeSideModal();renderMenuEditor();saveAll(true);
+}
+function addMenuItem(){
+  saveCurrentDay(true);
+  getDay(activeDay).items.push({name:"",price:"",allergens:"",side:""});
+  renderMenuEditor();saveAll(true);
+  setTimeout(()=>openFoodModal("item",getDay(activeDay).items.length-1),50);
+}
+function removeMenuItem(i){
+  saveCurrentDay(true);
+  const d=getDay(activeDay);d.items.splice(i,1);
+  if(!d.items.length)d.items.push({name:"",price:"",allergens:"",side:""});
+  renderMenuEditor();saveAll(true);
+}
+function clearSoup(i){getDay(activeDay).soups[i]={name:"",price:"",allergens:"",side:""};renderMenuEditor();saveAll(true)}
+
+function saveCurrentDay(silent=false){
+  const d=getDay(activeDay);
+  $("menuEditor").querySelectorAll("[data-all]").forEach(inp=>{
+    const [kind,i]=inp.dataset.all.split("-");(kind==="soup"?d.soups[+i]:d.items[+i]).allergens=inp.value.trim();
+  });
+  $("menuEditor").querySelectorAll("[data-price]").forEach(inp=>{const i=+inp.dataset.price.split("-")[1];d.items[i].price=inp.value.trim()});
+  $("menuEditor").querySelectorAll("[data-side]").forEach(inp=>{const i=+inp.dataset.side.split("-")[1];d.items[i].side=inp.value.trim()});
+  saveAll(silent);
+}
+function clearItem(i){getDay(activeDay).items[i]={name:"",price:"",allergens:"",side:""};renderMenuEditor();saveAll(true)}
+function clearDay(){if(confirm("Vyčistiť celý tento deň?")){state.week.days[dayISO(activeDay)]=emptyDay();renderMenuEditor();saveAll(true)}}
+function copyPrevDay(){if(activeDay===0)return alert("Pondelok nemá predošlý deň.");state.week.days[dayISO(activeDay)]=JSON.parse(JSON.stringify(getDay(activeDay-1)));renderMenuEditor();saveAll(true)}
+
+function addFood(){
+  const name=$("foodName").value.trim(); if(!name)return alert("Zadaj názov jedla.");
+  const entry={name,group:$("foodGroup").value,price:$("foodPrice").value.trim(),allergens:$("foodAllergens").value.trim(),side:$("foodSide").value.trim()};
+  const existing=state.foods.find(x=>x.name.toLowerCase()===name.toLowerCase());
+  if(existing) Object.assign(existing,entry); else state.foods.push(entry);
+  $("foodName").value=$("foodPrice").value=$("foodAllergens").value=$("foodSide").value="";
+  renderFoods();renderFoodOptions();saveAll(true);
+}
+function renderFoods(){
+  $("foodList").innerHTML=state.foods.map((f,i)=>`<div class="item"><div class="item-head"><div>
+  <b>${esc(f.name)}</b><div class="meta">${esc(f.group)} ${f.price?"• "+euro(esc(f.price)):""} ${f.allergens?"• alergény "+esc(f.allergens):""} ${f.side?"• "+esc(f.side):""}</div>
+  </div><div class="toolbar"><button class="btn tiny secondary" onclick="editFood(${i})">Upraviť</button><button class="btn tiny danger" onclick="deleteFood(${i})">Zmazať</button></div></div></div>`).join("");
+}
+function editFood(i){
+  const f=state.foods[i]; const name=prompt("Názov jedla:",f.name); if(name===null)return;
+  const price=prompt("Cena:",f.price??""); if(price===null)return;
+  const allergens=prompt("Alergény:",f.allergens??""); if(allergens===null)return;
+  const side=prompt("Príloha:",f.side??""); if(side===null)return;
+  f.name=name.trim();f.price=price.trim();f.allergens=allergens.trim();f.side=side.trim();
+  renderFoods();renderFoodOptions();saveAll(true);
+}
+function deleteFood(i){if(confirm("Zmazať jedlo z databázy?")){state.foods.splice(i,1);renderFoods();renderFoodOptions();saveAll(true)}}
+function renderFoodOptions(){$("foodOptions").innerHTML=state.foods.map(f=>`<option value="${esc(f.name)}"></option>`).join("")}
+
+function addSide(){
+  const n=$("sideName").value.trim();if(!n)return;
+  state.sides.push({name:n,allergens:$("sideAllergens").value.trim()});
+  $("sideName").value=$("sideAllergens").value="";
+  renderSides();renderSideOptions();saveAll(true);
+}
+function renderSides(){
+  $("sideList").innerHTML=state.sides.map((s,i)=>`<div class="item"><div class="item-head"><div><b>${esc(s.name)}</b><div class="meta">${s.allergens?"alergény "+esc(s.allergens):"bez zadaných alergénov"}</div></div>
+  <div class="toolbar"><button class="btn tiny secondary" onclick="editSide(${i})">Upraviť</button><button class="btn tiny danger" onclick="deleteSide(${i})">Zmazať</button></div></div></div>`).join("");
+}
+function editSide(i){const s=state.sides[i];const n=prompt("Názov prílohy:",s.name);if(n===null)return;const a=prompt("Alergény:",s.allergens||"");if(a===null)return;s.name=n.trim();s.allergens=a.trim();renderSides();renderSideOptions();saveAll(true)}
+function deleteSide(i){if(confirm("Zmazať prílohu?")){state.sides.splice(i,1);renderSides();renderSideOptions();saveAll(true)}}
+
+function saveSettings(){
+  state.settings={restaurantName:$("restaurantName").value.trim(),footerText:$("footerText").value,email:$("email").value.trim(),phone:$("phone").value.trim()};
+  saveAll();
+}
+function archiveWeek(){
+  saveCurrentDay(true);
+  const snap={id:Date.now(),from:state.week.from,to:state.week.to,days:JSON.parse(JSON.stringify(state.week.days))};
+  state.archive.unshift(snap);
+  saveAll(true);renderArchive();alert("Týždeň uložený do archívu.");
+}
+function renderArchive(){
+  $("archiveList").innerHTML=state.archive.length?state.archive.map((a,i)=>`<div class="item"><div class="item-head"><div><b>${fmtDate(a.from)} – ${fmtDate(a.to)}</b><div class="meta">Uložené menu</div></div><div class="toolbar">
+  <button class="btn tiny secondary" onclick="restoreWeek(${i})">Obnoviť</button><button class="btn tiny danger" onclick="deleteArchive(${i})">Zmazať</button>
+  </div></div></div>`).join(""):`<div class="card"><span class="note">Archív je zatiaľ prázdny.</span></div>`;
+}
+function restoreWeek(i){
+  if(!confirm("Obnoviť tento týždeň do editora?"))return;
+  const a=state.archive[i];state.week={from:a.from,to:a.to,days:JSON.parse(JSON.stringify(a.days))};activeDay=0;
+  $("dateFrom").value=state.week.from;$("dateTo").value=state.week.to;renderDayTabs();renderMenuEditor();saveAll(true);switchTab("menu");
+}
+function deleteArchive(i){if(confirm("Zmazať tento záznam z archívu?")){state.archive.splice(i,1);renderArchive();saveAll(true)}}
+
+function renderPreview(){
+  const s=state.settings;
+  let h=`<div class="top">
+    <div><div class="title">DENNÉ MENU:</div><div class="range">${fmtDate(state.week.from)} - ${fmtDate(state.week.to)}</div></div>
+    <div class="logo">TOBB<br><small>RESTAURANT</small></div>
+  </div>`;
+  DAYS.forEach((day,i)=>{
+    const d=getDay(i);
+    h+=`<div class="day"><div class="day-head"><div>${day} ${fmtDate(dayISO(i))}</div><div class="price">Cena</div></div>`;
+    d.soups.forEach((x,idx)=>{
+      if(x.name) h+=`<div class="entry"><div>${idx===0?"A":"B"}. Polievka: ${esc(x.name)}${x.allergens?` (${esc(x.allergens)})`:""}</div><div></div></div>`;
+    });
+    d.items.forEach((x,idx)=>{
+      if(x.name) h+=`<div class="entry"><div>${idx+1}. ${esc(x.name)}${x.side?` – ${esc(x.side)}`:""}${x.allergens?` (${esc(x.allergens)})`:""}</div><div class="price">${euro(esc(x.price))}</div></div>`;
+    });
+    h+=`</div>`;
+  });
+  h+=`<div class="foot">${esc(s.footerText||"").replace(/\n/g,"<br>")}<br>E-mail: ${esc(s.email||"")} &nbsp;&nbsp; Pevná linka: ${esc(s.phone||"")}</div>`;
+  $("paper").innerHTML=h;
+  fitPreview();
+}
+function fitPreview(){
+  const paper=$("paper"), wrap=paper.parentElement;
+  if(window.innerWidth<850){
+    const scale=(window.innerWidth-24)/794;
+    paper.style.transform=`scale(${scale})`;
+    paper.style.transformOrigin="top left";
+    wrap.style.height=(paper.scrollHeight*scale+12)+"px";
+    wrap.style.width=(794*scale)+"px";
+  }else{
+    paper.style.transform="none";wrap.style.height="auto";wrap.style.width="auto";
+  }
+}
+window.addEventListener("resize",fitPreview);
+
+function backupData(){
+  saveCurrentDay(true);
+  const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);
+  a.download=`TOBB-menu-zaloha-${state.week.from}.json`;a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+function restoreData(file){
+  if(!file)return;
+  const r=new FileReader();
+  r.onload=()=>{
+    try{
+      const obj=JSON.parse(r.result);
+      if(!obj.foods||!obj.week||!obj.settings) throw new Error();
+      state=obj;if(!state.archive)state.archive=[];
+      localStorage.setItem("tobbMenuStateV2",JSON.stringify(state));
+      location.reload();
+    }catch(e){alert("Tento súbor nie je platná záloha TOBB Menu.");}
+  };
+  r.readAsText(file);
+}
+
+init();
+</script>
+</body>
+</html>
