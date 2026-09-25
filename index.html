@@ -414,8 +414,10 @@ function renderMenuEditor(){
       <input value="${esc(x.allergens)}" data-all="item-${i}" placeholder="Alergény napr. 1,3,7">
       <button class="btn tiny danger" onclick="removeMenuItem(${i})">Odstrániť</button></div>
       <div class="menu-grid"><div></div>
-      <input class="choice-field" readonly value="${esc(x.side||"")}" onclick="openSideModal(${i})" placeholder="Ťukni – vybrať prílohu">
-      <button class="btn tiny secondary" onclick="openSideModal(${i})">Vybrať / vlastná</button></div>
+      <select data-side="item-${i}" onchange="pickInlineSide(${i},this.value)">
+        ${inlineSideOptions(x.side||"")}
+      </select>
+      <button class="btn tiny secondary" onclick="openSideModal(${i})">Vlastná</button></div>
     </div>`;
   });
   h+=`<button class="btn primary" style="width:100%;margin:4px 0 10px" onclick="addMenuItem()">+ Pridať položku jedla</button>`;
@@ -496,6 +498,23 @@ function saveItemSide(i){
   if(!side)return alert("Najprv zadaj prílohu.");
   saveSideByName(side);
   alert("Príloha je uložená samostatne v databáze príloh.");
+}
+
+
+function inlineSideOptions(current){
+  let h=`<option value="">Vybrať prílohu…</option>`;
+  state.sides.forEach(s=>{
+    h+=`<option value="${esc(s.name)}" ${s.name===current?"selected":""}>${esc(s.name)}</option>`;
+  });
+  return h;
+}
+function pickInlineSide(i,name){
+  if(!name)return;
+  const s=state.sides.find(x=>x.name===name);
+  const obj=getDay(activeDay).items[i];
+  obj.side=name;
+  if(s&&s.allergens)obj.allergens=mergeAllergens(obj.allergens,s.allergens);
+  renderMenuEditor();saveAll(true);
 }
 
 let sideTargetIndex=0;
