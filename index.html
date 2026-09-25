@@ -183,7 +183,7 @@ textarea{min-height:105px;resize:vertical}
     </div>
     <button class="btn primary" style="margin-top:8px" onclick="addFood()">+ Pridať jedlo</button>
     <div class="food-tools">
-      <input id="foodListSearch" placeholder="Hľadať v databáze…" oninput="foodListQuery=this.value;renderFoods()">
+      <input id="foodListSearch" placeholder="Min. 3 písmená = hľadanie vo všetkých kategóriách" oninput="foodListQuery=this.value;renderFoods()">
       <div class="food-count" id="foodCount"></div>
     </div>
     <div class="filter-bar" id="foodFilters" style="margin-top:8px"></div>
@@ -262,7 +262,7 @@ textarea{min-height:105px;resize:vertical}
       <button id="tabCustom" onclick="showFoodModalTab('custom')">Vlastné jedlo</button>
     </div>
     <div class="db-panel" id="dbPanel">
-      <input class="food-search" id="foodSearch" placeholder="Hľadať jedlo…" oninput="renderFoodPicker()">
+      <input class="food-search" id="foodSearch" placeholder="Napíš min. 3 písmená – hľadá vo všetkých kategóriách" oninput="renderFoodPicker()">
       <div class="filter-bar" id="pickerFilters" style="margin-top:8px"></div>
       <div class="food-pick-list" id="foodPickList"></div>
     </div>
@@ -702,11 +702,13 @@ function renderPickerFilters(){
 function renderFoodPicker(){
   const q=($("foodSearch")?.value||"").trim().toLowerCase();
   const kind=modalTarget.kind;
+  const globalSearch=q.length>=3;
   renderPickerFilters();
   let foods=state.foods.filter(f=>{
     const kindOk=kind==="soup"?f.group==="Polievka":f.group!=="Polievka";
-    const filterOk=modalFoodFilter==="all" ? true : modalFoodFilter==="fav" ? !!f.favorite : f.group===modalFoodFilter;
-    return kindOk && filterOk && (!q||`${f.name} ${f.side||""}`.toLowerCase().includes(q));
+    const filterOk=globalSearch ? true : (modalFoodFilter==="all" ? true : modalFoodFilter==="fav" ? !!f.favorite : f.group===modalFoodFilter);
+    const text=`${f.name} ${f.group} ${f.side||""}`.toLowerCase();
+    return kindOk && filterOk && (!q||text.includes(q));
   });
   foods.sort((a,b)=>{
     if(modalFoodFilter==="Pizza") return (a.pizzaOrder||999)-(b.pizzaOrder||999);
@@ -892,8 +894,9 @@ function toggleFavorite(i,ev){
 function renderFoods(){
   renderFoodFilters();
   const q=(foodListQuery||"").trim().toLowerCase();
+  const globalSearch=q.length>=3;
   const filtered=state.foods.filter(f=>{
-    const filterOk=activeFoodFilter==="all" ? true : activeFoodFilter==="fav" ? !!f.favorite : f.group===activeFoodFilter;
+    const filterOk=globalSearch ? true : (activeFoodFilter==="all" ? true : activeFoodFilter==="fav" ? !!f.favorite : f.group===activeFoodFilter);
     const text=`${f.name} ${f.group} ${f.side||""} ${f.allergens||""}`.toLowerCase();
     return filterOk && (!q || text.includes(q));
   });
